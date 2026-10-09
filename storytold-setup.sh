@@ -22,6 +22,7 @@ APP_ID="it.mijorus.gearlever"
 ORG="storytold"
 HOMEPAGE="https://getartcraft.com"
 APPDIR="${GEARLEVER_APPDIR:-$HOME/AppImages}"
+ASSUME_YES=0
 
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -59,6 +60,8 @@ err()  { printf '\033[1;31m[x]\033[0m %s\n'  "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 confirm() {
+  [[ "$ASSUME_YES" == 1 ]] && return 0   # --yes / unattended
+  [[ -t 0 ]] || return 0                 # no terminal: assume yes
   local ans
   read -r -p "${1:-Continue?} [Y/n] " ans
   [[ -z "$ans" || "$ans" =~ ^[Yy] ]]
@@ -270,8 +273,72 @@ select_apps() {   # prints chosen repo keys, one per line
   fi
 }
 
+# --------------------------- CLI / catalog helpers ---------------------------
+usage() {
+  cat <<EOF
+Storytold crafting-apps installer
+
+Usage: storytold-setup.sh [options] [app ...]
+
+Options:
+  --all            Install/update every app that has a Linux build
+  --apps "a b c"   Non-interactive: install/update the named apps
+  -y, --yes        Assume "yes" to prompts (unattended)
+  --list           List the catalog and exit
+  -h, --help       Show this help and exit
+
+With no app arguments and no --all, an interactive menu is shown. Apps can also
+be passed as plain arguments, e.g.:  storytold-setup.sh photocraft wordcraft
+
+Env:
+  GEARLEVER_APPDIR  Where integrated AppImages are stored (default ~/AppImages)
+EOF
+}
+
+list_catalog() {
+  local row k disp equiv av
+  printf '%-13s %-28s %s\n' "KEY" "APP" "LINUX"
+  for row in "${CATALOG[@]}"; do
+    IFS='|' read -r k disp equiv av <<< "$row"
+    printf '%-13s %-28s %s\n' "$k" "$disp" "$av"
+  done
+}
+
+is_available() {   # key -> 0 if it has a Linux build
+  local want="$1" row k disp equiv av
+  for row in "${CATALOG[@]}"; do
+    IFS='|' read -r k disp equiv av <<< "$row"
+    [[ "$k" == "$want" ]] && { [[ "$av" == "yes" ]]; return; }
+  done
+  return 1
+}
+
+all_available_keys() {
+  local row k disp equiv av
+  for row in "${CATALOG[@]}"; do
+    IFS='|' read -r k disp equiv av <<< "$row"
+    [[ "$av" == "yes" ]] && echo "$k"
+  done
+}
+
 # --------------------------------- Main --------------------------------------
 main() {
+  local MODE_ALL=0; local -a CLI_APPS=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) usage; exit 0 ;;
+      --list)    list_catalog; exit 0 ;;
+      --all)     MODE_ALL=1 ;;
+      -y|--yes)  ASSUME_YES=1 ;;
+      --apps)    shift; [[ $# -gt 0 ]] || { err "--apps needs a value"; exit 1; }
+                 read -r -a CLI_APPS <<< "$1" ;;
+      --)        shift; CLI_APPS+=("$@"); break ;;
+      -*)        err "unknown option: $1"; usage; exit 1 ;;
+      *)         CLI_APPS+=("$1") ;;
+    esac
+    shift
+  done
+
   have curl    || { err "curl is required";    exit 1; }
   have python3 || { err "python3 is required"; exit 1; }
   mkdir -p "$APPDIR"
@@ -279,12 +346,22 @@ main() {
   ensure_gearlever
   refresh_snapshot
 
-  local -a SELECTED=()
-  mapfile -t SELECTED < <(select_apps)
-  # drop blank lines
-  local -a PICK=(); local s
-  for s in "${SELECTED[@]}"; do [[ -n "$s" ]] && PICK+=("$s"); done
-  [[ ${#PICK[@]} -eq 0 ]] && { warn "Nothing selected."; exit 0; }
+  local -a PICK=()
+  if [[ $MODE_ALL -eq 1 ]]; then
+    mapfile -t PICK < <(all_available_keys)
+  elif [[ ${#CLI_APPS[@]} -gt 0 ]]; then
+    local a
+    for a in "${CLI_APPS[@]}"; do
+      if is_available "$a"; then PICK+=("$a")
+      else warn "skipping '$a' (unknown app or no Linux build)"; fi
+    done
+  else
+    local -a SELECTED=(); local s
+    mapfile -t SELECTED < <(select_apps)
+    for s in "${SELECTED[@]}"; do [[ -n "$s" ]] && PICK+=("$s"); done
+  fi
+
+  [[ ${#PICK[@]} -eq 0 ]] && { warn "Nothing to do."; exit 0; }
 
   say "Selected: ${PICK[*]}"; echo
   local repo disp row k d e a

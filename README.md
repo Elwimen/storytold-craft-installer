@@ -55,9 +55,50 @@ cd storytold-craft-installer
 Pick the apps you want in the menu and let it run. Run it again any time to add
 more apps or pull the latest versions.
 
+### Command-line options
+
+```
+--all            Install/update every app that has a Linux build
+--apps "a b c"   Non-interactive: install/update the named apps
+-y, --yes        Assume "yes" to prompts (unattended)
+--list           List the catalog and exit
+-h, --help       Show this help and exit
+```
+
+Apps can also be passed as plain arguments. Examples:
+
+```bash
+./storytold-setup.sh --list                       # show the catalog
+./storytold-setup.sh photocraft wordcraft         # just these two
+./storytold-setup.sh --all --yes                  # everything, unattended
+./storytold-setup.sh --apps "vectorcraft cadcraft"
+```
+
+With no app arguments and no `--all`, an interactive checklist is shown.
+
 ### Options via environment
 
 - `GEARLEVER_APPDIR` — where integrated AppImages are stored (default `~/AppImages`).
+
+### Example
+
+```text
+$ ./storytold-setup.sh photocraft gridcraft
+==> Gear Lever present (4.6.2).
+==> Selected: photocraft gridcraft
+
+==> PhotoCraft  (storytold/photocraft)
+==>   latest: v0.5.0  (photocraft-0.5.0-linux-x86_64.AppImage)
+==>   checksum OK
+==>   integrated: /home/you/AppImages/photocraft.appimage
+==>   GitHub update source set
+==>   added Website/Source launcher actions
+
+==> GridCraft  (storytold/gridcraft)
+==>   already integrated: /home/you/AppImages/gridcraft.appimage
+==>   GitHub update source set
+==>   updated to latest
+```
 
 ## Updating later
 
