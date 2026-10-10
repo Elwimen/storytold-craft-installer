@@ -16,6 +16,10 @@ For each app you pick, the script:
 It is **idempotent**: re-running updates already-installed apps in place instead of
 creating duplicates.
 
+## Demo
+
+![Demo of storytold-setup.sh showing --help, --list, and an idempotent install](demo.gif)
+
 ## The apps
 
 | App | Equivalent |
@@ -90,12 +94,12 @@ $ ./storytold-setup.sh photocraft gridcraft
 ==> PhotoCraft  (storytold/photocraft)
 ==>   latest: v0.5.0  (photocraft-0.5.0-linux-x86_64.AppImage)
 ==>   checksum OK
-==>   integrated: /home/you/AppImages/photocraft.appimage
+==>   integrated: ~/AppImages/photocraft.appimage
 ==>   GitHub update source set
 ==>   added Website/Source launcher actions
 
 ==> GridCraft  (storytold/gridcraft)
-==>   already integrated: /home/you/AppImages/gridcraft.appimage
+==>   already integrated: ~/AppImages/gridcraft.appimage
 ==>   GitHub update source set
 ==>   updated to latest
 ```
